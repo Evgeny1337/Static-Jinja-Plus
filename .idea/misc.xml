@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.13 (FoodPlan)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13 (FoodPlan)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.9 (Static-Jinja-Plus)" project-jdk-type="Python SDK" />
 </project>
