@@ -1,173 +1,159 @@
-# StaticJinjaPlus
+#  StaticJinjaPlus Container - Руководство пользователя
+Контейнер `evgeny1337depo/static-jinja-plus` - это статический генератор сайтов на основе Jinja2 шаблонов. Он преобразует шаблоны в готовые HTML-страницы.
 
-StaticJinjaPlus is a tool to build static sites using [Jinja](https://jinja.palletsprojects.com/).
+## Dockerfile (универсальный для всех версий)
+```docker
+ARG BASE_IMAGE=ubuntu:22.04
+FROM ${BASE_IMAGE}
 
-# Content
+ENV DEBIAN_FRONTEND=noninteractive
 
-- [How to install](#How-to-install)
-- [Building sites](#Building-sites)
-  - [Watching for changes](#Watching-for-changes)
-  - [Specifying templates or build paths](#Specifying-templates-or-build-paths)
-  - [Using assets](#Using-assets)
-  - [Using context](#Using-context)
-  - [Шаблоны extends и include](#Шаблоны-extends-и-include)
-- [Example templates](#Example-templates)
+ARG STATICJINJAPLUS_VERSION
+ARG STATICJINJAPLUS_COMMIT
+ARG STATICJINJAPLUS_CHECKSUM
 
-## How to install
+RUN if [ "${BASE_IMAGE#python:}" = "${BASE_IMAGE}" ]; then \
+        apt-get update && \
+        apt-get install -y python3 python3-pip && \
+        ln -s /usr/bin/python3 /usr/bin/python; \
+    fi
 
-Python should already be installed. This project requires Python3.7 or newer.
+WORKDIR /app
 
-Clone the repo / download code.
+ADD --checksum=sha256:${STATICJINJAPLUS_CHECKSUM} \
+    https://github.com/MrDave/StaticJinjaPlus/archive/${STATICJINJAPLUS_COMMIT}.tar.gz \
+    /app/package.tar.gz
 
-Using virtual environment [virtualenv/venv](https://docs.python.org/3/library/venv.html) is recommended for project isolation.
+RUN tar -xzf /app/package.tar.gz -C /app --strip-components=1 && \
+    rm /app/package.tar.gz
 
-Install requirements:
-```commandline
-pip install -r requirements.txt
+RUN if [ "${BASE_IMAGE#python:}" = "${BASE_IMAGE}" ]; then \
+        pip3 install --break-system-packages -r requirements.txt; \
+    else \
+        pip install --break-system-packages -r requirements.txt; \
+    fi
+
+ENTRYPOINT ["python", "main.py"]
 ```
 
-To check that everything installed correctly try running the script with `--help` flag:
-```commandline
-python main.py --help
-```
-Output:
-```
-usage: main.py [-h] [-w] [--srcpath SRCPATH] [--outpath OUTPATH]
+## Команды сборки
 
-Render HTML pages from Jinja2 templates
+### Ubuntu образы:
+```bash
+# 0.1.0
+docker build -t yourrepo/static-jinja-plus:0.1.0 \
+  --build-arg BASE_IMAGE=ubuntu:22.04 \
+  --build-arg STATICJINJAPLUS_COMMIT=a9f8f5ba28827841eab003c8b7d49d757f2df9e2 \
+  --build-arg STATICJINJAPLUS_CHECKSUM=697390fa55bf55d6ce1c869bb3729dab79978eece83e47d3afee593094fd0d7b .
 
-options:
-  -h, --help         show this help message and exit
-  -w, --watch        Render the site, and re-render on changes to <srcpath>
-  --srcpath SRCPATH  The directory to look in for templates (defaults to './templates)'
-  --outpath OUTPATH  The directory to place rendered files in (defaults to './build')
-```
-Now you're all ready to build your static sites!
+#  0.1.1  
+docker build -t yourrepo/static-jinja-plus:0.1.1 \
+  --build-arg BASE_IMAGE=ubuntu:22.04 \
+  --build-arg STATICJINJAPLUS_COMMIT=e7b998f016da3c27eaaf84803661e052058ffc0a \
+  --build-arg STATICJINJAPLUS_CHECKSUM=eb788a31381d2ee554491a434496d7d81db34e87cec5653188699abdfcf00bed .
 
+# develop
+docker build -t yourrepo/static-jinja-plus:develop \
+  --build-arg BASE_IMAGE=ubuntu:22.04 \
+  --build-arg STATICJINJAPLUS_COMMIT=main \
+  --build-arg STATICJINJAPLUS_CHECKSUM=9adccb8fe17a40252df1a3acdea7edef4633b4ecaa8ba2dd5e0270f87ae43eab .
 
-## Building sites
-
-Note: see [Example templates](#example-templates) section for an example with sample templates. Rename the /templates_example folder to /templates to run test templates.
-
-To render html pages from templates, run:
-```commandline
-python main.py
-```
-This will look in `./templates` for templates (files whose name does not start with `.` or `_`) and build them to `./build`.
-
-You'll see a message about each template in the output:
-```
-Rendering index.html...
+# latest
+docker build -t yourrepo/static-jinja-plus:latest \
+  --build-arg BASE_IMAGE=ubuntu:22.04 \
+  --build-arg STATICJINJAPLUS_COMMIT=main \
+  --build-arg STATICJINJAPLUS_CHECKSUM=9adccb8fe17a40252df1a3acdea7edef4633b4ecaa8ba2dd5e0270f87ae43eab .
 ```
 
-### Watching for changes
-To watch for changes in the templates and recompile build files if changes happen, use `-w` or `--watch` argument.
-```commandline
-python main.py -w
+### Slim образы:
 
-Rendering index.html...
-Watching '/home/mrdave/Python Projects/StaticJinjaPlus/templates' for changes...
-Press Ctrl+C to stop.
+```bash
+# 0.1.1-slim
+docker build -t yourrepo/static-jinja-plus:0.1.1-slim \
+  --build-arg BASE_IMAGE=python:3.12-slim \
+  --build-arg STATICJINJAPLUS_COMMIT=e7b998f016da3c27eaaf84803661e052058ffc0a \
+  --build-arg STATICJINJAPLUS_CHECKSUM=eb788a31381d2ee554491a434496d7d81db34e87cec5653188699abdfcf00bed .
+
+# develop-slim
+docker build -t yourrepo/static-jinja-plus:develop-slim \
+  --build-arg BASE_IMAGE=python:3.12-slim \
+  --build-arg STATICJINJAPLUS_COMMIT=main \
+  --build-arg STATICJINJAPLUS_CHECKSUM=9adccb8fe17a40252df1a3acdea7edef4633b4ecaa8ba2dd5e0270f87ae43eab .
+
+# slim
+docker build -t yourrepo/static-jinja-plus:slim \
+  --build-arg BASE_IMAGE=python:3.12-slim \
+  --build-arg STATICJINJAPLUS_COMMIT=main \
+  --build-arg STATICJINJAPLUS_CHECKSUM=9adccb8fe17a40252df1a3acdea7edef4633b4ecaa8ba2dd5e0270f87ae43eab .
 ```
 
-### Specifying templates or build paths
+## Готовые образы
+Команды для загрузки образов из репозитория `evgeny1337depo/static-jinja-plus` на Docker Hub. Вот команды `docker pull` для каждого тега:
+```bash
+# 0.1.0 — на базе ubuntu
+docker pull evgeny1337depo/static-jinja-plus:0.1.0
 
-To change the source and/or output paths use optional arguments:  
-- `--srcpath` - the directory to look in for templates (defaults to `./templates`)  
-- `--outpath` - the directory to place rendered files in (defaults to `.`)
+# 0.1.1 — на базе ubuntu
+docker pull evgeny1337depo/static-jinja-plus:0.1.1
 
-Example:
-```commandline
-python main.py --srcpath other_template_folder --outpath ./built/site
+# 0.1.1-slim — на базе python-slim
+docker pull evgeny1337depo/static-jinja-plus:0.1.1-slim
 
-Rendering index.html...
+# develop — на базе ubuntu
+docker pull evgeny1337depo/static-jinja-plus:develop
+
+# develop-slim — на базе python-slim
+docker pull evgeny1337depo/static-jinja-plus:develop-slim
+
+# latest — на базе ubuntu
+docker pull evgeny1337depo/static-jinja-plus:latest
+
+# slim — на базе python-slim
+docker pull evgeny1337depo/static-jinja-plus:slim
 ```
 
-### Using assets
-
-To use assets such as `.css` and `.js` files with your templates, place them in `assets` folder inside source path (so `./templates/assets` by default).
-In this case StaticJinjaPlus will copy the assets to output folder keeping the same relative paths.
-
-Building log will also include "rendering" the assets:
-
-```commandline
-python main.py
-
-Rendering assets/style.css...
-Rendering index.html...
+После загрузки образов вы можете проверить их наличие командой:
+```bash
+docker images evgeny1337depo/static-jinja-plus
 ```
 
-### Using context
-It is possible to pass context for use in your templates by setting environmental variables named as you use them in the templates with the `"SJP_"` prefix.
-
-As an example, if your template includes `thing` variable, pass the `SJP_THING` env variable before building.
-
-```html
-<!-- html template -->
-<div class="container">
-    <h1>Welcome to our website!</h1>
-    <p>This is the homepage content. Replace it with your own.</p>
-    <p>The thing from context is {{ thing }}</p>
-</div>
+И запустить любой образ, например вот примеры использования:
+* Базовое использование
+```bash
+docker run --rm -v $(pwd)/templates:/app/templates \
+	-v $(pwd)/build:/app/build \
+	evgeny1337depo/static-jinja-plus:latest
 ```
-```shell
-export SJP_THING="my_thing"
-python main.py
+* С переменными окружения
+```bash
+docker run --rm \
+  -v $(pwd)/templates:/app/templates \
+  -v $(pwd)/build:/app/build \
+  -e SJP_TITLE="Мой блог" \
+  -e SJP_NAME="Автор блога" \
+  -e SJP_VERSION="2.0.0" \
+  evgeny1337depo/static-jinja-plus:latest
 ```
-![](https://imgur.com/TEf3yJ6.png)
-
-
-## Шаблоны extends и include
-
-- Вызов `extends` используется когда шаблоны должны иметь одинаковую базовую структуру, одну и ту же разбивку по блокам, но с разным содержимым для этих блоков. Это позволяет сформировать единообразный стиль сайта, когда веб-страницы имеют одни и те же структурные элементы - меню, хедер, футер, сайдбары и так далее.
-
-Пример кода:
-
-```html
-<!-- index.html file -->
-
-{% extends '_base.html' %}
+### Входные данные 
+```text
+templates/
+├── index.html          # Основной шаблон
+├── about.html          # Другие шаблоны
+└── assets/             # Статические файлы
+    ├── style.css
+    ├── script.js
+    └── images/
+        └── logo.png
 ```
-
-- Вызов `include` добавляет в нужное место кусок шаблона. Название подключаемого шаблона передается в качестве параметра.
-  
-Пример вызова `include` для файла `_card.html` из `index.html`. Имя файла `_card.html` имеет префикс «`_`» что объявляет его вспомогательным (подключаемым). При изменении вспомогательного файла рендерятся все файлы в которых есть к нему обращения. В данной конструкции передадим еще две переменные `page` и  `number`.
-
-```html
-<!-- index.html file -->
-
-{% with page="Домашняя", number=1 %}
-  {% include "_card.html" %}
-{% endwith %}
-```
-
-Пример кода с переменными `page` и `number`.
-  
-```html
-<!-- _card.html file -->
-
-<p>Вывод текста из файла _card.html методом include. Страница {{page}} Номер {{number}} </p>
-```
-
-<img width="738" alt="image" src="https://github.com/SGKespace/StaticJinjaPlus/assets/55636018/6fbce118-e5ae-46b8-b5e5-7ab4df323562">
-
-
-## Example templates
-The repository has example templates to see how StaticJinjaPlus works.
-
-Run the following command and see your results in `./build`:
-```commandline
-python main.py --srcpath example/templates
-```
-```shell
-build
+###  Выходные данные (что создает контейнер)
+```text
+build/
+├── index.html          # Скомпилированные HTML
 ├── about.html
-├── assets
-│  └── style.css
-├── faq.html
-└── index.html
-
+└── assets/             # Скопированные статические файлы
+    ├── style.css
+    ├── script.js
+    └── images/
+        └── logo.png
 ```
-![Example of index.html](https://imgur.com/Onr3aVM.jpg)
-Example render of `index.html`
 
